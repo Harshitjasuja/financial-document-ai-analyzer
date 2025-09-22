@@ -1,0 +1,19 @@
+{
+  "total_vectors": 6541,
+  "vector_dimension": 384,
+  "companies": [
+    "GOOGLE",
+    "NVIDIA",
+    "TESLA",
+    "ORACLE",
+    "INTEL",
+    "CRM",
+    "APPLE",
+    "AMAZON",
+    "NETFLIX",
+    "MICROSOFT"
+  ],
+  "database_type": "FAISS",
+  "creation_time": 216.2754828929901,
+  "index_file": "data/processed/vectorstore"
+}

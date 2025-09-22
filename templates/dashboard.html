@@ -1,0 +1,182 @@
+{% extends "base.html" %}
+
+{% block title %}Dashboard - SEC Filings RAG Assistant{% endblock %}
+
+{% block content %}
+<div class="container-fluid">
+    <div class="row mb-4">
+        <div class="col-12">
+            <h2><i class="fas fa-tachometer-alt me-3"></i>System Dashboard</h2>
+            <p class="text-muted">Monitor system performance and analytics</p>
+        </div>
+    </div>
+
+    <!-- System Metrics -->
+    <div class="row mb-4">
+        <div class="col-md-3">
+            <div class="card border-0 shadow-sm bg-primary text-white">
+                <div class="card-body text-center">
+                    <i class="fas fa-building fs-1 mb-3"></i>
+                    <h3 id="totalCompanies">-</h3>
+                    <p class="mb-0">Total Companies</p>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-3">
+            <div class="card border-0 shadow-sm bg-success text-white">
+                <div class="card-body text-center">
+                    <i class="fas fa-file-alt fs-1 mb-3"></i>
+                    <h3 id="totalDocuments">-</h3>
+                    <p class="mb-0">Documents Processed</p>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-3">
+            <div class="card border-0 shadow-sm bg-info text-white">
+                <div class="card-body text-center">
+                    <i class="fas fa-cubes fs-1 mb-3"></i>
+                    <h3 id="totalChunks">-</h3>
+                    <p class="mb-0">Text Chunks</p>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-3">
+            <div class="card border-0 shadow-sm bg-warning text-white">
+                <div class="card-body text-center">
+                    <i class="fas fa-search fs-1 mb-3"></i>
+                    <h3 id="totalQueries">0</h3>
+                    <p class="mb-0">Queries Processed</p>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- System Health -->
+    <div class="row mb-4">
+        <div class="col-md-6">
+            <div class="card border-0 shadow-sm">
+                <div class="card-header bg-white">
+                    <h5 class="mb-0"><i class="fas fa-heartbeat me-2"></i>System Health</h5>
+                </div>
+                <div class="card-body">
+                    <div class="d-flex justify-content-between align-items-center mb-3">
+                        <span><i class="fas fa-database me-2"></i>Vector Database</span>
+                        <span class="badge bg-success" id="vectordbStatus">Online</span>
+                    </div>
+                    <div class="d-flex justify-content-between align-items-center mb-3">
+                        <span><i class="fas fa-brain me-2"></i>Gemini AI</span>
+                        <span class="badge bg-success" id="geminiStatus">Connected</span>
+                    </div>
+                    <div class="d-flex justify-content-between align-items-center mb-3">
+                        <span><i class="fas fa-server me-2"></i>Embeddings Model</span>
+                        <span class="badge bg-success" id="embeddingsStatus">Loaded</span>
+                    </div>
+                    <div class="d-flex justify-content-between align-items-center">
+                        <span><i class="fas fa-folder me-2"></i>Document Storage</span>
+                        <span class="badge bg-success" id="storageStatus">Available</span>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-6">
+            <div class="card border-0 shadow-sm">
+                <div class="card-header bg-white">
+                    <h5 class="mb-0"><i class="fas fa-list me-2"></i>Available Companies</h5>
+                </div>
+                <div class="card-body" style="max-height: 300px; overflow-y: auto;">
+                    <div id="companiesList">
+                        <div class="text-center py-3">
+                            <i class="fas fa-spinner fa-spin me-2"></i>
+                            <span>Loading companies...</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Quick Actions -->
+    <div class="row">
+        <div class="col-12">
+            <div class="card border-0 shadow-sm">
+                <div class="card-header bg-white">
+                    <h5 class="mb-0"><i class="fas fa-tools me-2"></i>Quick Actions</h5>
+                </div>
+                <div class="card-body">
+                    <div class="row">
+                        <div class="col-md-3 mb-2">
+                            <button class="btn btn-outline-primary w-100" onclick="reinitializeSystem()">
+                                <i class="fas fa-redo me-2"></i>Reinitialize System
+                            </button>
+                        </div>
+                        <div class="col-md-3 mb-2">
+                            <button class="btn btn-outline-success w-100" onclick="refreshData()">
+                                <i class="fas fa-sync me-2"></i>Refresh Data
+                            </button>
+                        </div>
+                        <div class="col-md-3 mb-2">
+                            <a href="{{ url_for('upload') }}" class="btn btn-outline-info w-100">
+                                <i class="fas fa-upload me-2"></i>Upload Documents
+                            </a>
+                        </div>
+                        <div class="col-md-3 mb-2">
+                            <a href="{{ url_for('analytics') }}" class="btn btn-outline-warning w-100">
+                                <i class="fas fa-chart-line me-2"></i>View Analytics
+                            </a>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+</div>
+{% endblock %}
+
+{% block extra_scripts %}
+<script>
+$(document).ready(function() {
+    loadDashboardData();
+    loadCompanies();
+});
+
+function loadDashboardData() {
+    $.get('/api/companies', function(response) {
+        if (response.success) {
+            $('#totalCompanies').text(response.companies.length);
+        }
+    });
+}
+
+function loadCompanies() {
+    $.get('/api/companies', function(response) {
+        if (response.success && response.companies.length > 0) {
+            const html = response.companies.map(c => '<div class="badge bg-light text-dark me-2 mb-2">'+c+'</div>').join('');
+            $('#companiesList').html(html);
+        } else {
+            $('#companiesList').html('<p class="text-muted">No companies loaded yet</p>');
+        }
+    });
+}
+
+function reinitializeSystem() {
+    if (confirm('Are you sure you want to reinitialize the system?')) {
+        $.post('/api/initialize', function(response) {
+            if (response.success) {
+                showNotification('System reinitialized successfully!', 'success');
+                loadDashboardData();
+                loadCompanies();
+            } else {
+                showNotification('Failed to reinitialize system', 'danger');
+            }
+        });
+    }
+}
+
+function refreshData() {
+    showNotification('Refreshing dashboard data...', 'info');
+    loadDashboardData();
+    loadCompanies();
+}
+</script>
+{% endblock %}

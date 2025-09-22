@@ -1,0 +1,291 @@
+{% extends "base.html" %}
+{% block title %}Home - SEC Filings RAG Assistant{% endblock %}
+
+{% block content %}
+<div class="container">
+    <div class="row mb-5">
+        <div class="col-12">
+            <div class="jumbotron bg-gradient text-white p-5 rounded-3" style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);">
+                <h1 class="display-4" style="color:#000;"><i class="fas fa-robot me-3"></i>SEC Filings RAG Assistant</h1> 
+                <p class="lead" style="color:#000;">Intelligent Financial Document Analysis powered by Google Gemini AI</p>
+                <button id="initializeBtn" class="btn btn-light btn-lg">
+                    <i class="fas fa-play-circle me-2"></i>Initialize System
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <div class="row mb-4">
+        <div class="col-12">
+            <div class="card border-0 shadow-sm">
+                <div class="card-header bg-white">
+                    <h5 class="mb-0"><i class="fas fa-info-circle me-2"></i>System Status</h5>
+                </div>
+                <div class="card-body">
+                    <div id="systemStatus" class="d-none">
+                        <div class="row text-center">
+                            <div class="col-md-3">
+                                <div class="stat-card">
+                                    <i class="fas fa-building text-primary fs-2"></i>
+                                    <h4 id="companyCount">0</h4>
+                                    <p class="text-muted">Companies</p>
+                                </div>
+                            </div>
+                            <div class="col-md-3">
+                                <div class="stat-card">
+                                    <i class="fas fa-database text-success fs-2"></i>
+                                    <h4>FAISS</h4>
+                                    <p class="text-muted">Vector DB</p>
+                                </div>
+                            </div>
+                            <div class="col-md-3">
+                                <div class="stat-card">
+                                    <i class="fas fa-brain text-info fs-2"></i>
+                                    <h4>Gemini</h4>
+                                    <p class="text-muted">AI Model</p>
+                                </div>
+                            </div>
+                            <div class="col-md-3">
+                                <div class="stat-card">
+                                    <i class="fas fa-check-circle text-success fs-2"></i>
+                                    <h4 id="systemStatusText">Ready</h4>
+                                    <p class="text-muted">Status</p>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    <div id="loadingStatus" class="text-center py-3">
+                        <i class="fas fa-spinner fa-spin me-2"></i>
+                        <span>Click "Initialize System" to start</span>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Query UI -->
+    <div class="row mb-4">
+        <div class="col-12">
+            <div class="card border-0 shadow-sm">
+                <div class="card-header bg-white">
+                    <h5 class="mb-0"><i class="fas fa-search me-2"></i>Ask Your Question</h5>
+                </div>
+                <div class="card-body">
+                    <form id="queryForm">
+                        <div class="row">
+                            <div class="col-md-8">
+                                <div class="form-floating mb-3">
+                                    <textarea class="form-control" id="queryInput" placeholder="Enter your question..." style="height: 120px;"></textarea>
+                                    <label for="queryInput">Enter your question about SEC filings...</label>
+                                </div>
+                            </div>
+                            <div class="col-md-4">
+                                <div class="mb-3">
+                                    <label for="numResults" class="form-label">Number of Results</label>
+                                    <select class="form-select" id="numResults">
+                                        <option value="3" selected>3 Results</option>
+                                        <option value="5">5 Results</option>
+                                        <option value="7">7 Results</option>
+                                    </select>
+                                </div>
+                                <button type="submit" class="btn btn-primary btn-lg w-100" id="searchBtn">
+                                    <i class="fas fa-search me-2"></i>Search & Analyze
+                                </button>
+                            </div>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Quick Actions -->
+    <div class="row mb-4">
+        <div class="col-12">
+            <div class="card border-0 shadow-sm">
+                <div class="card-header bg-white">
+                    <h5 class="mb-0"><i class="fas fa-bolt me-2"></i>Quick Actions</h5>
+                </div>
+                <div class="card-body">
+                    <div id="sampleQueries" class="row"></div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Results -->
+    <div id="resultsSection" class="row d-none">
+        <div class="col-12">
+            <div class="card border-0 shadow-sm">
+                <div class="card-header bg-white d-flex justify-content-between align-items-center">
+                    <h5 class="mb-0"><i class="fas fa-clipboard-list me-2"></i>Analysis Results</h5>
+                    <small class="text-muted" id="searchTime"></small>
+                </div>
+                <div class="card-body">
+                    <div id="resultsContent"></div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_scripts %}
+<script>
+let systemInitialized = false;
+
+$(document).ready(function() {
+    loadSampleQueries();
+    $('#initializeBtn').click(initializeSystem);
+    $('#queryForm').submit(function(e){ e.preventDefault(); processQuery(); });
+    $(document).on('click', '.btn-sample-query', function(){
+        const q = $(this).data('query'); $('#queryInput').val(q); processQuery();
+    });
+});
+
+function initializeSystem() {
+    const $btn = $('#initializeBtn');
+    const $loading = $('#loadingStatus');
+    const $status = $('#systemStatus');
+
+    $btn.prop('disabled', true).html('<i class="fas fa-spinner fa-spin me-2"></i>Initializing...');
+    $loading.html('<i class="fas fa-spinner fa-spin me-2"></i>Initializing RAG System...');
+
+    $.ajax({
+        url: '/api/initialize',
+        method: 'POST',
+        success: function(res) {
+            if (res.success) {
+                systemInitialized = true;
+                $loading.addClass('d-none');
+                $status.removeClass('d-none').addClass('fade-in');
+                $('#companyCount').text((res.companies || []).length);
+                const mode = res.system_info && res.system_info.mode ? res.system_info.mode : 'demo';
+                $('#systemStatusText').text(mode === 'ready' ? 'Ready' : 'Demo');
+
+                if (res.system_info && res.system_info.errors && res.system_info.errors.length) {
+                    showNotification('Init warnings: ' + res.system_info.errors.join(' | '), 'warning');
+                }
+                $btn.removeClass('btn-light').addClass('btn-success')
+                   .html('<i class="fas fa-check-circle me-2"></i>System Ready!');
+                showNotification('System initialized (' + mode + ' mode)', 'success');
+            } else {
+                showNotification('Failed to initialize: ' + res.message, 'danger');
+                $btn.prop('disabled', false).html('<i class="fas fa-play-circle me-2"></i>Initialize System');
+            }
+        },
+        error: function(xhr, status, error) {
+            showNotification('Error initializing: ' + error, 'danger');
+            $btn.prop('disabled', false).html('<i class="fas fa-play-circle me-2"></i>Initialize System');
+        }
+    });
+}
+
+function processQuery() {
+    if (!systemInitialized) { showNotification('Please initialize the system first', 'warning'); return; }
+    const query = ($('#queryInput').val() || '').trim();
+    const k = parseInt($('#numResults').val());
+    if (!query) { showNotification('Please enter a question', 'warning'); return; }
+
+    const $btn = $('#searchBtn');
+    $btn.prop('disabled', true).html('<i class="fas fa-spinner fa-spin me-2"></i>Searching...');
+    $('#resultsSection').addClass('d-none');
+
+    $.ajax({
+        url: '/api/query',
+        method: 'POST',
+        contentType: 'application/json',
+        data: JSON.stringify({ query: query, num_results: k }),
+        success: function(resp) {
+            if (resp.success) displayResults(resp.result);
+            else showNotification('Query failed: ' + resp.message, 'danger');
+        },
+        error: function(xhr, status, error) {
+            showNotification('Error: ' + error, 'danger');
+        },
+        complete: function() {
+            $btn.prop('disabled', false).html('<i class="fas fa-search me-2"></i>Search & Analyze');
+        }
+    });
+}
+
+function displayResults(result) {
+    const $sec = $('#resultsSection'), $con = $('#resultsContent'), $t = $('#searchTime');
+    $t.text('Search completed in ' + Number(result.search_time).toFixed(3) + ' seconds');
+
+    var html = '';
+    html += '<div class="row mb-4"><div class="col-12">';
+    html += '<h6 class="text-primary mb-3"><i class="fas fa-question-circle me-2"></i>Query: "' + escapeHtml(result.query || '') + '"</h6>';
+    html += '<div class="d-flex flex-wrap gap-2 mb-3">';
+    html += '<span class="badge bg-primary">Company: ' + escapeHtml(result.company_detected || 'General') + '</span>';
+    html += '<span class="badge bg-success">' + (result.search_results || []).length + ' Sources</span>';
+    html += '<span class="badge bg-info">' + Number(result.search_time).toFixed(3) + 's</span>';
+    html += '</div></div></div>';
+
+    html += '<div class="row mb-4"><div class="col-12"><div class="ai-response">';
+    html += '<h6 class="text-primary mb-3"><i class="fas fa-robot me-2"></i>AI Analysis</h6>';
+    html += '<div>' + formatAIAnswer(result.ai_answer || '') + '</div>';
+    html += '</div></div></div>';
+
+    html += '<div class="row"><div class="col-12">';
+    html += '<h6 class="text-primary mb-3"><i class="fas fa-book me-2"></i>Source Documents</h6>';
+    html += '<div>' + formatSourceDocuments(result.search_results || []) + '</div>';
+    html += '</div></div>';
+
+    $con.html(html);
+    $sec.removeClass('d-none').addClass('fade-in');
+    $('html, body').animate({ scrollTop: $sec.offset().top - 100 }, 800);
+}
+
+function formatAIAnswer(answer) {
+    return escapeHtml(answer).replace(/\\n/g, '<br>').replace(/\\*\\*(.*?)\\*\\*/g, '<strong>$1</strong>');
+}
+
+function formatSourceDocuments(sources) {
+    var html = '';
+    for (var i = 0; i < sources.length; i++) {
+        var s = sources[i];
+        html += '<div class="source-document">';
+        html += '<div class="d-flex justify-content-between align-items-start mb-2">';
+        html += '<h6 class="mb-0"><span class="badge bg-secondary me-2">' + (i + 1) + '</span>' + escapeHtml(s.company || 'Unknown') + ' (Page ' + (s.page || 1) + ')</h6>';
+        html += '</div><p class="text-muted mb-0">' + escapeHtml(s.content_preview || '') + '</p></div>';
+    }
+    return html || '<p class="text-muted">No sources</p>';
+}
+
+function loadSampleQueries() {
+    $.get('/api/sample_queries', function(r) {
+        if (!r.success) return;
+        var $c = $('#sampleQueries'), html = '';
+        for (var i = 0; i < r.sample_queries.length; i++) {
+            var cat = r.sample_queries[i];
+            html += '<div class="col-md-6 col-lg-3 mb-3">';
+            html += '<h6 class="text-primary mb-3"><i class="fas fa-tag me-2"></i>' + escapeHtml(cat.category) + '</h6>';
+            for (var j = 0; j < cat.queries.length; j++) {
+                var q = cat.queries[j];
+                html += '<button class="btn btn-sample-query w-100 mb-2" data-query="' + escapeHtml(q) + '"><i class="fas fa-play-circle me-2"></i>' + escapeHtml(q) + '</button>';
+            }
+            html += '</div>';
+        }
+        $c.html(html);
+    });
+}
+
+function escapeHtml(s) {
+    s = String(s);
+    return s.replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;").replace(/\"/g,"&quot;").replace(/'/g,"&#039;");
+}
+
+function showNotification(message, type) {
+    type = type || 'info';
+    var klass = 'alert-' + type;
+    var icon = 'fas fa-info-circle';
+    if (type === 'success') icon = 'fas fa-check-circle';
+    else if (type === 'danger') icon = 'fas fa-exclamation-triangle';
+    else if (type === 'warning') icon = 'fas fa-exclamation-circle';
+
+    var n = $('<div class="alert '+klass+' alert-dismissible fade show position-fixed" style="top:80px;right:20px;z-index:1050;min-width:300px;"><i class="'+icon+' me-2"></i>'+escapeHtml(message)+'<button type="button" class="btn-close" data-bs-dismiss="alert"></button></div>');
+    $('body').append(n); setTimeout(function(){ n.alert('close'); }, 5000);
+}
+</script>
+{% endblock %}

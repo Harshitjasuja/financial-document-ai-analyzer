@@ -1,0 +1,48 @@
+{
+  "total_chunks": 6541,
+  "company_statistics": {
+    "AMAZON": {
+      "pages": 94,
+      "chunks": 436
+    },
+    "APPLE": {
+      "pages": 121,
+      "chunks": 549
+    },
+    "CRM": {
+      "pages": 155,
+      "chunks": 845
+    },
+    "GOOGLE": {
+      "pages": 99,
+      "chunks": 466
+    },
+    "INTEL": {
+      "pages": 270,
+      "chunks": 1384
+    },
+    "MICROSOFT": {
+      "pages": 168,
+      "chunks": 796
+    },
+    "NETFLIX": {
+      "pages": 84,
+      "chunks": 377
+    },
+    "NVIDIA": {
+      "pages": 96,
+      "chunks": 492
+    },
+    "ORACLE": {
+      "pages": 118,
+      "chunks": 564
+    },
+    "TESLA": {
+      "pages": 144,
+      "chunks": 632
+    }
+  },
+  "chunk_size": 1000,
+  "chunk_overlap": 200,
+  "avg_chunk_length": 780.6006726800183
+}

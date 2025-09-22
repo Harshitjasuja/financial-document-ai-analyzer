@@ -1,0 +1,291 @@
+{% extends "base.html" %}
+
+{% block title %}Upload Documents - SEC Filings RAG Assistant{% endblock %}
+
+{% block content %}
+<div class="container">
+    <div class="row mb-4">
+        <div class="col-12">
+            <h2><i class="fas fa-upload me-3"></i>Upload SEC Documents</h2>
+            <p class="text-muted">Upload SEC 10-K filings in PDF format</p>
+        </div>
+    </div>
+
+    <!-- Upload Area -->
+    <div class="row mb-4">
+        <div class="col-12">
+            <div class="card border-0 shadow-sm">
+                <div class="card-body">
+                    <div class="upload-area border-2 border-dashed border-primary rounded-3 p-5 text-center"
+                         id="uploadArea"
+                         style="min-height: 200px; cursor: pointer;">
+                        <i class="fas fa-cloud-upload-alt fs-1 text-primary mb-3"></i>
+                        <h4>Drop PDF files here or click to browse</h4>
+                        <p class="text-muted">Support for multiple PDF files (SEC 10-K reports)</p>
+                        <input type="file" id="fileInput" class="d-none" multiple accept=".pdf">
+                        <button class="btn btn-primary btn-lg" onclick="document.getElementById('fileInput').click()">
+                            <i class="fas fa-folder-open me-2"></i>Browse Files
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- File List -->
+    <div class="row mb-4" id="fileListSection" style="display: none;">
+        <div class="col-12">
+            <div class="card border-0 shadow-sm">
+                <div class="card-header bg-white d-flex justify-content-between align-items-center">
+                    <h5 class="mb-0"><i class="fas fa-file-alt me-2"></i>Selected Files</h5>
+                    <button class="btn btn-sm btn-outline-danger" onclick="clearFiles()">
+                        <i class="fas fa-trash me-1"></i>Clear All
+                    </button>
+                </div>
+                <div class="card-body">
+                    <div id="fileList"></div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Processing Options -->
+    <div class="row mb-4" id="optionsSection" style="display: none;">
+        <div class="col-12">
+            <div class="card border-0 shadow-sm">
+                <div class="card-header bg-white">
+                    <h5 class="mb-0"><i class="fas fa-cog me-2"></i>Processing Options</h5>
+                </div>
+                <div class="card-body">
+                    <div class="row">
+                        <div class="col-md-6">
+                            <div class="mb-3">
+                                <label for="chunkSize" class="form-label">Chunk Size</label>
+                                <select class="form-select" id="chunkSize">
+                                    <option value="800">800 characters</option>
+                                    <option value="1000" selected>1000 characters</option>
+                                    <option value="1200">1200 characters</option>
+                                </select>
+                            </div>
+                        </div>
+                        <div class="col-md-6">
+                            <div class="mb-3">
+                                <label for="chunkOverlap" class="form-label">Chunk Overlap</label>
+                                <select class="form-select" id="chunkOverlap">
+                                    <option value="100">100 characters</option>
+                                    <option value="200" selected>200 characters</option>
+                                    <option value="300">300 characters</option>
+                                </select>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="row">
+                        <div class="col-12">
+                            <button class="btn btn-success btn-lg w-100" id="processBtn" onclick="processFiles()">
+                                <i class="fas fa-cogs me-2"></i>Process Documents
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Progress Section -->
+    <div class="row mb-4" id="progressSection" style="display: none;">
+        <div class="col-12">
+            <div class="card border-0 shadow-sm">
+                <div class="card-header bg-white">
+                    <h5 class="mb-0"><i class="fas fa-tasks me-2"></i>Processing Progress</h5>
+                </div>
+                <div class="card-body">
+                    <div class="progress mb-3" style="height: 20px;">
+                        <div class="progress-bar progress-bar-striped progress-bar-animated"
+                             id="progressBar"
+                             role="progressbar"
+                             style="width: 0%">
+                        </div>
+                    </div>
+                    <div id="progressText" class="text-center">
+                        <i class="fas fa-spinner fa-spin me-2"></i>
+                        Preparing to process...
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Current Files in System -->
+    <div class="row">
+        <div class="col-12">
+            <div class="card border-0 shadow-sm">
+                <div class="card-header bg-white d-flex justify-content-between align-items-center">
+                    <h5 class="mb-0"><i class="fas fa-database me-2"></i>Current Documents in System</h5>
+                    <button class="btn btn-sm btn-outline-primary" onclick="loadCurrentFiles()">
+                        <i class="fas fa-refresh me-1"></i>Refresh
+                    </button>
+                </div>
+                <div class="card-body">
+                    <div id="currentFiles">
+                        <div class="text-center py-3">
+                            <i class="fas fa-folder-open me-2"></i>
+                            <span>Load current files by clicking "Refresh"</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+</div>
+{% endblock %}
+
+{% block extra_scripts %}
+<script>
+let selectedFiles = [];
+
+$(document).ready(function() {
+    setupFileUpload();
+    loadCurrentFiles();
+});
+
+function setupFileUpload() {
+    const uploadArea = document.getElementById('uploadArea');
+    const fileInput = document.getElementById('fileInput');
+
+    uploadArea.addEventListener('dragover', (e) => {
+        e.preventDefault();
+        uploadArea.classList.add('dragover');
+    });
+    uploadArea.addEventListener('dragleave', () => {
+        uploadArea.classList.remove('dragover');
+    });
+    uploadArea.addEventListener('drop', (e) => {
+        e.preventDefault();
+        uploadArea.classList.remove('dragover');
+        handleFiles(e.dataTransfer.files);
+    });
+    fileInput.addEventListener('change', (e) => {
+        handleFiles(e.target.files);
+    });
+    uploadArea.addEventListener('click', () => fileInput.click());
+}
+
+function handleFiles(files) {
+    selectedFiles = Array.from(files).filter(f => f.type === 'application/pdf');
+    if (selectedFiles.length === 0) {
+        showNotification('Please select PDF files only', 'warning');
+        return;
+    }
+    displaySelectedFiles();
+    document.getElementById('fileListSection').style.display = 'block';
+    document.getElementById('optionsSection').style.display = 'block';
+}
+
+function displaySelectedFiles() {
+    const fileList = document.getElementById('fileList');
+    fileList.innerHTML = selectedFiles.map((file, index) => `
+        <div class="d-flex justify-content-between align-items-center border rounded p-2 mb-2">
+            <div>
+                <i class="fas fa-file-pdf text-danger me-2"></i>
+                <strong>${file.name}</strong>
+                <small class="text-muted ms-2">(${formatFileSize(file.size)})</small>
+            </div>
+            <button class="btn btn-sm btn-outline-danger" onclick="removeFile(${index})">
+                <i class="fas fa-times"></i>
+            </button>
+        </div>
+    `).join('');
+}
+
+function removeFile(index) {
+    selectedFiles.splice(index, 1);
+    if (selectedFiles.length === 0) {
+        document.getElementById('fileListSection').style.display = 'none';
+        document.getElementById('optionsSection').style.display = 'none';
+    } else {
+        displaySelectedFiles();
+    }
+}
+
+function clearFiles() {
+    selectedFiles = [];
+    document.getElementById('fileListSection').style.display = 'none';
+    document.getElementById('optionsSection').style.display = 'none';
+    document.getElementById('fileInput').value = '';
+}
+
+function processFiles() {
+    if (selectedFiles.length === 0) {
+        showNotification('Please select files first', 'warning');
+        return;
+    }
+    document.getElementById('progressSection').style.display = 'block';
+    document.getElementById('processBtn').disabled = true;
+
+    let progress = 0;
+    const progressBar = document.getElementById('progressBar');
+    const progressText = document.getElementById('progressText');
+
+    const interval = setInterval(() => {
+        progress += Math.random() * 15;
+        if (progress >= 100) {
+            progress = 100;
+            clearInterval(interval);
+            progressText.innerHTML = '<i class="fas fa-check-circle text-success me-2"></i>Processing completed successfully!';
+            setTimeout(() => {
+                showNotification('Documents processed successfully!', 'success');
+                clearFiles();
+                document.getElementById('progressSection').style.display = 'none';
+                document.getElementById('processBtn').disabled = false;
+                loadCurrentFiles();
+            }, 2000);
+        }
+        progressBar.style.width = progress + '%';
+        if (progress < 30) {
+            progressText.innerHTML = '<i class="fas fa-spinner fa-spin me-2"></i>Loading documents...';
+        } else if (progress < 60) {
+            progressText.innerHTML = '<i class="fas fa-spinner fa-spin me-2"></i>Chunking text...';
+        } else if (progress < 90) {
+            progressText.innerHTML = '<i class="fas fa-spinner fa-spin me-2"></i>Generating embeddings...';
+        } else {
+            progressText.innerHTML = '<i class="fas fa-spinner fa-spin me-2"></i>Building vector database...';
+        }
+    }, 500);
+}
+
+function loadCurrentFiles() {
+    const currentFiles = document.getElementById('currentFiles');
+    currentFiles.innerHTML = '<div class="text-center py-3"><i class="fas fa-spinner fa-spin me-2"></i>Loading...</div>';
+    setTimeout(() => {
+        const mockFiles = [
+            { name: 'AAPL_10K_2023.pdf', company: 'Apple Inc.', size: '2.1 MB', date: '2024-01-15' },
+            { name: 'MSFT_10K_2023.pdf', company: 'Microsoft Corp.', size: '1.8 MB', date: '2024-01-10' },
+            { name: 'TSLA_10K_2023.pdf', company: 'Tesla Inc.', size: '2.5 MB', date: '2024-01-08' }
+        ];
+        currentFiles.innerHTML = mockFiles.map(file => `
+            <div class="d-flex justify-content-between align-items-center border rounded p-2 mb-2">
+                <div>
+                    <i class="fas fa-file-pdf text-success me-2"></i>
+                    <strong>${file.name}</strong>
+                    <br>
+                    <small class="text-muted">${file.company} • ${file.size} • ${file.date}</small>
+                </div>
+                <div>
+                    <button class="btn btn-sm btn-outline-info me-1"><i class="fas fa-eye"></i></button>
+                    <button class="btn btn-sm btn-outline-danger"><i class="fas fa-trash"></i></button>
+                </div>
+            </div>
+        `).join('');
+    }, 1000);
+}
+
+function formatFileSize(bytes) {
+    if (bytes === 0) return '0 Bytes';
+    const k = 1024;
+    const sizes = ['Bytes', 'KB', 'MB', 'GB'];
+    const i = Math.floor(Math.log(bytes) / Math.log(k));
+    return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + ' ' + sizes[i];
+}
+</script>
+{% endblock %}

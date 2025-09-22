@@ -1,0 +1,16 @@
+{
+  "total_documents": 1349,
+  "companies": [
+    "GOOGLE",
+    "AMAZON",
+    "NETFLIX",
+    "TESLA",
+    "NVIDIA",
+    "CRM",
+    "APPLE",
+    "ORACLE",
+    "INTEL",
+    "MICROSOFT"
+  ],
+  "total_pages": 1349
+}

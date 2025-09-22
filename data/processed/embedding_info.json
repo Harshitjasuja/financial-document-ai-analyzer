@@ -1,0 +1,23 @@
+{
+  "embedding_shape": [
+    6541,
+    384
+  ],
+  "model_name": "sentence-transformers/all-MiniLM-L6-v2",
+  "total_chunks": 6541,
+  "embedding_dimension": 384,
+  "generation_time": 430.6628940105438,
+  "chunks_per_second": 15.188213544675289,
+  "companies": [
+    "TESLA",
+    "CRM",
+    "ORACLE",
+    "AMAZON",
+    "NVIDIA",
+    "NETFLIX",
+    "MICROSOFT",
+    "GOOGLE",
+    "INTEL",
+    "APPLE"
+  ]
+}
